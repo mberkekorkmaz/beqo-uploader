@@ -1,9 +1,10 @@
+
 const { Client, GatewayIntentBits } = require("discord.js");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
-const uploadVideoToYouTube = require("./uploadVideoToYouTube"); // 📥 YouTube fonksiyonunu çağır
+const uploadVideoToYouTube = require("./uploadVideoToYouTube");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -32,11 +33,18 @@ client.on("messageCreate", async (message) => {
     fs.writeFileSync(filePath, buffer);
     console.log("🎉 Video indirildi:", fileName);
 
-    // 🚀 YouTube'a gönderiyoruz!
-    await uploadVideoToYouTube(filePath, message.content || "beqoAI Yükleme");
+    await message.reply("📤 Video YouTube’a yüklenmeye başladı!");
 
+    const videoId = await uploadVideoToYouTube(filePath, message.content || "beqoAI Yükleme");
+
+    if (videoId) {
+      await message.reply(`✅ Yüklendi! İzle: https://youtube.com/watch?v=${videoId}`);
+    } else {
+      await message.reply("❌ Yükleme sırasında bir hata oluştu.");
+    }
   } catch (err) {
     console.error("❌ Video indirme hatası:", err.message);
+    await message.reply("❌ Video indirilirken bir hata oluştu.");
   }
 });
 
