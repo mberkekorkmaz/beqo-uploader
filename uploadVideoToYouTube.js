@@ -1,18 +1,17 @@
 
-const { google } = require("googleapis");
 const fs = require("fs");
+const { google } = require("googleapis");
 require("dotenv").config();
 
-async function uploadVideoToYouTube(videoPath, title = "beqoAI Otomatik Yükleme") {
-  console.log("🎬 uploadVideoToYouTube başladı:", videoPath);
-
+async function uploadVideoToYouTube(videoPath) {
   const oauth2Client = new google.auth.OAuth2(
-    process.env.YOUTUBE_CLIENT_ID,
-    process.env.YOUTUBE_CLIENT_SECRET
+    process.env.YT_CLIENT_ID,
+    process.env.YT_CLIENT_SECRET,
+    process.env.YT_REDIRECT_URI
   );
 
   oauth2Client.setCredentials({
-    refresh_token: process.env.YOUTUBE_REFRESH_TOKEN,
+    refresh_token: process.env.YT_REFRESH_TOKEN,
   });
 
   const youtube = google.youtube({
@@ -20,14 +19,12 @@ async function uploadVideoToYouTube(videoPath, title = "beqoAI Otomatik Yükleme
     auth: oauth2Client,
   });
 
-  const fileSize = fs.statSync(videoPath).size;
-
   try {
     const res = await youtube.videos.insert({
-      part: ["snippet", "status"],
+      part: "snippet,status",
       requestBody: {
         snippet: {
-          title: title,
+          title: "Otomatik Yüklenen Video",
           description: "",
         },
         status: {
@@ -37,19 +34,11 @@ async function uploadVideoToYouTube(videoPath, title = "beqoAI Otomatik Yükleme
       media: {
         body: fs.createReadStream(videoPath),
       },
-    }, {
-      onUploadProgress: evt => {
-        const progress = (evt.bytesRead / fileSize) * 100;
-        console.log(`📤 Yükleme: ${progress.toFixed(2)}%`);
-      }
     });
 
-    console.log("✅ Video Yüklendi: https://youtube.com/watch?v=" + res.data.id);
-    return res.data.id;
-
+    console.log("✅ YouTube Yükleme Başarılı:", res.data.id);
   } catch (err) {
-    console.error("❌ YouTube yükleme hatası:", err.response?.data || err.message);
-    return null;
+    console.error("❌ YouTube Yükleme Hatası:", err.message);
   }
 }
 

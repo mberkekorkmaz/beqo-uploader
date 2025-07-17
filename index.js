@@ -33,18 +33,13 @@ client.on("messageCreate", async (message) => {
     fs.writeFileSync(filePath, buffer);
     console.log("🎉 Video indirildi:", fileName);
 
-    await message.reply("📤 Video YouTube’a yüklenmeye başladı!");
+    await message.channel.send("📤 Video YouTube'a yükleniyor...");
+    await uploadVideoToYouTube(filePath);
+    await message.channel.send("✅ Video YouTube'a başarıyla yüklendi!");
 
-    const videoId = await uploadVideoToYouTube(filePath, message.content || "beqoAI Yükleme");
-
-    if (videoId) {
-      await message.reply(`✅ Yüklendi! İzle: https://youtube.com/watch?v=${videoId}`);
-    } else {
-      await message.reply("❌ Yükleme sırasında bir hata oluştu.");
-    }
   } catch (err) {
-    console.error("❌ Video indirme hatası:", err.message);
-    await message.reply("❌ Video indirilirken bir hata oluştu.");
+    console.error("❌ Video işleme hatası:", err.message);
+    await message.channel.send("❌ Video yüklenirken bir hata oluştu.");
   }
 });
 
