@@ -1,27 +1,26 @@
 const { google } = require("googleapis");
 const fs = require("fs");
-require("dotenv").config();
 
-const auth = new google.auth.OAuth2(
-  process.env.CLIENT_ID,
-  process.env.CLIENT_SECRET,
-  process.env.REDIRECT_URI
-);
+async function uploadVideoToYouTube(videoPath, message) {
+  const auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: process.env.CLIENT_EMAIL,
+      private_key: process.env.PRIVATE_KEY.replace(/\n/g, "\n"),
+    },
+    scopes: ["https://www.googleapis.com/auth/youtube.upload"],
+  });
 
-auth.setCredentials({ refresh_token: process.env.REFRESH_TOKEN });
+  const youtube = google.youtube({
+    version: "v3",
+    auth: await auth.getClient(),
+  });
 
-const youtube = google.youtube({
-  version: "v3",
-  auth,
-});
-
-async function uploadVideoToYouTube(filePath, discordChannel) {
   try {
     const res = await youtube.videos.insert({
-      part: "snippet,status",
+      part: ["snippet", "status"],
       requestBody: {
         snippet: {
-          title: "Discord'dan Yüklenen Video",
+          title: "Discord'dan Otomatik Video",
           description: "",
         },
         status: {
@@ -29,19 +28,17 @@ async function uploadVideoToYouTube(filePath, discordChannel) {
         },
       },
       media: {
-        body: fs.createReadStream(filePath),
+        body: fs.createReadStream(videoPath),
       },
     });
 
     console.log("✅ Video yüklendi:", res.data.id);
-    if (discordChannel) {
-      await discordChannel.send(`✅ Video yüklendi: https://youtu.be/${res.data.id}`);
-    }
+    await message.reply(`✅ Video yüklendi: https://youtu.be/${res.data.id}`);
   } catch (err) {
     console.error("❌ YouTube yükleme hatası:", err.message);
-    if (discordChannel) {
-      await discordChannel.send("❌ YouTube yükleme hatası oluştu.");
-    }
+    await message.reply("❌ YouTube'a yükleme başarısız.");
+  } finally {
+    fs.unlinkSync(videoPath);
   }
 }
 
