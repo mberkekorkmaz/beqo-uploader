@@ -27,15 +27,15 @@ client.on("messageCreate", async (message) => {
 
   try {
     const response = await fetch(url);
-    const buffer = await response.buffer(); // HATA buradaydı, düzeltildi
+    const buffer = await response.buffer(); // pipe yerine buffer kullanıyoruz
     fs.writeFileSync(filePath, buffer);
     console.log("🎉 Video indirildi:", fileName);
 
-    // Buraya YouTube yükleme fonksiyonunu çağıracaksın
+    // Buraya YouTube yükleme fonksiyonu eklenecek yakında
     // await uploadToYouTube(filePath);
 
   } catch (err) {
-    console.error("❌ Video indirme hatası:", err);
+    console.error("❌ Video indirme hatası:", err.message);
   }
 });
 
