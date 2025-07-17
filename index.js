@@ -1,53 +1,79 @@
-const { Client, GatewayIntentBits } = require('discord.js');
-const express = require('express');
-const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
-const { google } = require('googleapis');
 require('dotenv').config();
-
-const app = express();
-const upload = multer({ dest: 'uploads/' });
+const { Client, GatewayIntentBits } = require('discord.js');
+const fs = require('fs');
+const { google } = require('googleapis');
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
+
+const CHANNEL_ID = '1387766634214850611';
 
 client.once('ready', () => {
-  console.log(`Bot ${client.user.tag} olarak giriş yaptı`);
+  console.log(`Bot giriş yaptı: ${client.user.tag}`);
 });
 
-app.post('/upload', upload.single('video'), async (req, res) => {
-  const title = req.body.title || 'Otomatik Yüklenen Video';
-  const filePath = req.file.path;
+client.on('messageCreate', async message => {
+  if (message.author.bot) return;
+  if (message.channel.id !== CHANNEL_ID) return;
 
-  const auth = new google.auth.OAuth2(
+  const attachment = message.attachments.first();
+  if (!attachment || !attachment.name.endsWith('.mp4')) {
+    return message.reply('Lütfen bir MP4 dosyası gönder.');
+  }
+
+  const filePath = `./${attachment.name}`;
+  const dest = fs.createWriteStream(filePath);
+
+  const response = await fetch(attachment.url);
+  response.body.pipe(dest);
+
+  dest.on('finish', async () => {
+    await uploadToYouTube(filePath, attachment.name);
+    fs.unlinkSync(filePath);
+    message.reply('Video başarıyla yüklendi!');
+  });
+
+  dest.on('error', err => {
+    console.error('Dosya indirilemedi:', err);
+    message.reply('Bir hata oluştu.');
+  });
+});
+
+async function uploadToYouTube(filePath, title) {
+  const oauth2Client = new google.auth.OAuth2(
     process.env.CLIENT_ID,
     process.env.CLIENT_SECRET,
-    process.env.REDIRECT_URI
+    'https://developers.google.com/oauthplayground'
   );
-  auth.setCredentials({ refresh_token: process.env.REFRESH_TOKEN });
 
-  const youtube = google.youtube({ version: 'v3', auth });
+  oauth2Client.setCredentials({
+    access_token: process.env.ACCESS_TOKEN,
+    refresh_token: process.env.REFRESH_TOKEN,
+    scope: 'https://www.googleapis.com/auth/youtube.upload',
+    token_type: 'Bearer',
+    expiry_date: true,
+  });
 
-  try {
-    const response = await youtube.videos.insert({
-      part: 'snippet,status',
-      requestBody: {
-        snippet: { title: title },
-        status: { privacyStatus: 'public' }
+  const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+
+  const res = await youtube.videos.insert({
+    part: 'snippet,status',
+    requestBody: {
+      snippet: {
+        title: title,
+        description: '',
       },
-      media: {
-        body: fs.createReadStream(filePath)
-      }
-    });
-    fs.unlinkSync(filePath);
-    res.status(200).send(`Video yüklendi! ID: ${response.data.id}`);
-  } catch (err) {
-    console.error('Yükleme hatası:', err);
-    res.status(500).send('Yükleme başarısız.');
-  }
-});
+      status: {
+        privacyStatus: 'public',
+      },
+    },
+    media: {
+      body: fs.createReadStream(filePath),
+    },
+  });
 
-client.login(process.env.BOT_TOKEN);
-app.listen(3000, () => console.log('Express çalışıyor'));
+  console.log('Video yüklendi:', res.data);
+}
+
+client.login(process.env.DISCORD_BOT_TOKEN);
