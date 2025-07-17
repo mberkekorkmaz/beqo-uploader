@@ -1,16 +1,16 @@
-
 const { Client, GatewayIntentBits } = require("discord.js");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
+
 const uploadVideoToYouTube = require("./uploadVideoToYouTube");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
-const CHANNEL_ID = "1387766634214850611";
+const CHANNEL_ID = "1387766634214850611"; // Discord kanal ID
 
 client.once("ready", () => {
   console.log(`✅ Bot giriş yaptı: ${client.user.tag}`);
@@ -32,14 +32,11 @@ client.on("messageCreate", async (message) => {
     const buffer = await response.buffer();
     fs.writeFileSync(filePath, buffer);
     console.log("🎉 Video indirildi:", fileName);
-
-    await message.channel.send("📤 Video YouTube'a yükleniyor...");
-    await uploadVideoToYouTube(filePath);
-    await message.channel.send("✅ Video YouTube'a başarıyla yüklendi!");
-
+    await message.channel.send("🎥 Video indirildi, YouTube'a yükleniyor...");
+    await uploadVideoToYouTube(filePath, message.channel); // Discord kanalını gönderiyoruz
   } catch (err) {
-    console.error("❌ Video işleme hatası:", err.message);
-    await message.channel.send("❌ Video yüklenirken bir hata oluştu.");
+    console.error("❌ Video indirme hatası:", err.message);
+    await message.channel.send("❌ Video indirme hatası oluştu.");
   }
 });
 
